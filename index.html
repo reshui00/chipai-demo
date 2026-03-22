@@ -1,736 +1,379 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>出片助手</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>帮帮 - 远程协助长辈</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #0a0a0f;
-      --card: #13131a;
-      --border: rgba(255,255,255,0.08);
-      --accent: #a78bfa;
-      --accent2: #f472b6;
-      --text: #f1f0ff;
-      --muted: #888;
-      --green: #34d399;
-    }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; }
 
-    /* ── 顶栏 ── */
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(10,10,15,0.95);
-      position: sticky; top: 0; z-index: 100;
-      backdrop-filter: blur(12px);
-    }
-    .logo { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
-    .logo span { background: linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-    .tab-bar {
-      display: flex; gap: 4px;
-      background: var(--card);
-      border-radius: 10px; padding: 4px;
-    }
-    .tab {
-      padding: 6px 14px; border-radius: 7px; font-size: 13px; font-weight: 500;
-      border: none; cursor: pointer; background: transparent; color: var(--muted);
-      transition: all .2s;
-    }
-    .tab.active { background: var(--accent); color: #fff; }
+    /* ── 顶部导航 ── */
+    .nav { background: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 8px rgba(0,0,0,0.08); position: sticky; top: 0; z-index: 100; }
+    .nav-logo { font-size: 20px; font-weight: 800; color: #667eea; display: flex; align-items: center; gap: 8px; }
+    .nav-tabs { display: flex; gap: 4px; }
+    .tab { padding: 7px 18px; border-radius: 20px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: transparent; color: #888; transition: all .2s; }
+    .tab.active { background: #667eea; color: #fff; }
 
-    /* ── 页面 ── */
-    .page { display: none; flex: 1; flex-direction: column; padding: 20px; gap: 16px; }
-    .page.active { display: flex; }
+    /* ── 英雄区 ── */
+    .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; text-align: center; padding: 60px 24px 80px; }
+    .hero h1 { font-size: 36px; font-weight: 800; margin-bottom: 14px; }
+    .hero p { font-size: 17px; opacity: .85; max-width: 480px; margin: 0 auto 32px; line-height: 1.6; }
+    .hero-badges { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 8px 18px; border-radius: 20px; font-size: 13px; }
 
-    /* ── 相机页 ── */
-    .camera-zone {
-      position: relative; border-radius: 20px; overflow: hidden;
-      background: #0d0d18;
-      border: 1.5px dashed var(--border);
-      min-height: 280px; display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-    }
-    .camera-zone video, .camera-zone img {
-      width: 100%; height: 100%; object-fit: cover; display: block;
-    }
-    .camera-zone img { position: absolute; inset: 0; }
-    .camera-hint {
-      display: flex; flex-direction: column; align-items: center; gap: 12px;
-      color: var(--muted); pointer-events: none;
-    }
-    .camera-hint svg { opacity: .5; }
-    .camera-hint p { font-size: 14px; }
-    #videoEl { width: 100%; height: 100%; object-fit: cover; }
-    .camera-overlay {
-      position: absolute; inset: 0; pointer-events: none;
-    }
-    /* 构图辅助线 */
-    .grid-line {
-      position: absolute; background: rgba(255,255,255,0.15);
-    }
-    .grid-h { left: 0; right: 0; height: 1px; }
-    .grid-v { top: 0; bottom: 0; width: 1px; }
-    #grid-h1 { top: 33.3%; }
-    #grid-h2 { top: 66.6%; }
-    #grid-v1 { left: 33.3%; }
-    #grid-v2 { left: 66.6%; }
+    /* ── 设备预览区 ── */
+    .preview-section { padding: 48px 24px; max-width: 1100px; margin: 0 auto; }
+    .preview-section h2 { text-align: center; font-size: 24px; color: #1a1a2e; margin-bottom: 8px; }
+    .preview-section .subtitle { text-align: center; color: #888; font-size: 15px; margin-bottom: 40px; }
+    .devices { display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
 
-    /* AI分析气泡覆盖 */
-    .ai-bubble {
-      position: absolute; background: rgba(10,10,15,0.88); backdrop-filter: blur(8px);
-      border: 1px solid rgba(167,139,250,0.4);
-      border-radius: 10px; padding: 8px 12px;
-      font-size: 12px; line-height: 1.5; max-width: 190px;
-      color: #e0e0ff; display: none;
-    }
-    .ai-bubble.show { display: block; animation: fadeUp .3s ease; }
-    @keyframes fadeUp { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
-    #bubble1 { bottom: 14px; left: 14px; }
-    #bubble2 { top: 14px; right: 14px; }
+    /* ── 设备外壳 ── */
+    .device { display: flex; flex-direction: column; align-items: center; }
+    .device-label { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 14px; }
+    .device-label span { background: #667eea; color: #fff; padding: 3px 10px; border-radius: 10px; font-size: 12px; margin-left: 6px; }
 
-    .cam-actions {
-      display: flex; gap: 12px; align-items: center; justify-content: center;
-    }
-    .btn-circle {
-      width: 64px; height: 64px; border-radius: 50%;
-      border: 3px solid var(--accent);
-      background: transparent; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 26px; transition: all .15s;
-    }
-    .btn-circle:active { transform: scale(.93); }
-    .btn-circle.primary {
-      background: var(--accent); border-color: var(--accent);
-      width: 72px; height: 72px; font-size: 28px;
-    }
-    .btn-sm {
-      padding: 10px 20px; border-radius: 12px; font-size: 14px; font-weight: 600;
-      border: none; cursor: pointer; transition: all .15s;
-    }
-    .btn-sm:active { transform: scale(.96); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+    /* 手机 */
+    .phone-shell { width: 280px; background: #1a1a2e; border-radius: 36px; padding: 14px 10px; box-shadow: 0 24px 60px rgba(0,0,0,0.25); border: 3px solid #2a2a3e; }
+    .phone-notch { width: 80px; height: 20px; background: #0d0d1a; border-radius: 10px; margin: 0 auto 10px; }
+    .phone-screen { background: #0d0d1a; border-radius: 22px; overflow: hidden; }
 
-    /* ── 分析结果卡片 ── */
-    .result-card {
-      background: var(--card); border-radius: 16px; padding: 16px;
-      border: 1px solid var(--border);
-    }
-    .result-card h3 {
-      font-size: 14px; color: var(--muted); margin-bottom: 12px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .score-row {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 8px;
-    }
-    .score-label { font-size: 13px; color: #ccc; }
-    .score-bar-wrap { flex: 1; margin: 0 12px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; }
-    .score-bar { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .6s ease; }
-    .score-num { font-size: 13px; font-weight: 700; color: var(--accent); min-width: 28px; text-align: right; }
+    /* 电脑 */
+    .laptop-shell { width: 560px; }
+    .laptop-screen-wrap { background: #1a1a2e; border-radius: 12px 12px 0 0; padding: 10px 10px 6px; box-shadow: 0 24px 60px rgba(0,0,0,0.25); border: 3px solid #2a2a3e; border-bottom: none; }
+    .laptop-screen { background: #0d0d1a; border-radius: 6px; overflow: hidden; }
+    .laptop-base { background: #c8c8c8; height: 18px; border-radius: 0 0 8px 8px; border: 3px solid #aaa; border-top: none; }
+    .laptop-foot { background: #b0b0b0; height: 8px; width: 200px; margin: 0 auto; border-radius: 0 0 6px 6px; }
 
-    .tip-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-    .tip-item {
-      display: flex; gap: 10px; align-items: flex-start;
-      background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px 12px;
-    }
-    .tip-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-    .tip-text { font-size: 13px; line-height: 1.6; color: #ddd; }
-    .tip-text strong { color: var(--accent); }
+    /* ── 屏幕内容 ── */
+    .screen-page { display: none; }
+    .screen-page.active { display: block; }
 
-    .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .tag {
-      padding: 4px 10px; border-radius: 20px; font-size: 12px;
-      background: rgba(167,139,250,0.15); color: var(--accent); border: 1px solid rgba(167,139,250,0.3);
-    }
+    /* 首页（两端） */
+    .landing { background: linear-gradient(135deg, #667eea, #764ba2); min-height: 420px; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .landing-card { background: #fff; border-radius: 16px; padding: 28px 24px; width: 100%; text-align: center; }
+    .landing-card .logo-big { font-size: 36px; }
+    .landing-card h2 { font-size: 22px; font-weight: 800; color: #1a1a2e; margin: 6px 0 4px; }
+    .landing-card .sub { font-size: 12px; color: #aaa; margin-bottom: 20px; }
+    .input-mock { border: 2px solid #e8e8e8; border-radius: 8px; padding: 10px; text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 8px; color: #1a1a2e; margin-bottom: 16px; }
+    .role-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .role-btn { flex: 1; padding: 12px 6px; border: 2px solid #e8e8e8; border-radius: 10px; font-size: 12px; font-weight: 600; color: #888; text-align: center; cursor: default; }
+    .role-btn.selected { border-color: #667eea; background: #f0f0ff; color: #667eea; }
+    .role-btn .icon { font-size: 22px; display: block; margin-bottom: 2px; }
+    .join-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: default; }
 
-    /* ── 照片预览小图 ── */
-    #preview-thumb {
-      width: 72px; height: 72px; border-radius: 10px; object-fit: cover;
-      border: 2px solid var(--accent); flex-shrink: 0; display: none;
-    }
+    /* 长辈端：等待共享 */
+    .parent-ready { background: #1a1a2e; min-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+    .parent-ready .status-bar { width: 100%; background: rgba(102,126,234,0.9); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #fff; margin-bottom: 32px; }
+    .parent-ready .dot { width: 8px; height: 8px; background: #ff9500; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .parent-ready .content { text-align: center; color: #fff; }
+    .parent-ready .big-icon { font-size: 56px; margin-bottom: 12px; }
+    .parent-ready h3 { font-size: 18px; margin-bottom: 6px; }
+    .parent-ready p { font-size: 13px; color: #aaa; margin-bottom: 20px; }
+    .share-btn { padding: 16px 36px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: default; }
 
-    /* ── 聊天页 ── */
-    .chat-container {
-      flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
-      padding-bottom: 8px;
-    }
-    .chat-container::-webkit-scrollbar { display: none; }
-    .msg {
-      max-width: 85%; border-radius: 16px; padding: 12px 14px;
-      font-size: 14px; line-height: 1.65;
-    }
-    .msg.ai {
-      background: var(--card); color: #e0e0ff; align-self: flex-start;
-      border-bottom-left-radius: 4px; border: 1px solid var(--border);
-    }
-    .msg.user {
-      background: linear-gradient(135deg, #6d28d9, #7c3aed);
-      color: #fff; align-self: flex-end;
-      border-bottom-right-radius: 4px;
-    }
-    .msg .typing { display: inline-flex; gap: 4px; align-items: center; }
-    .typing-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--accent); opacity: .5;
-      animation: blink 1.2s ease-in-out infinite;
-    }
-    .typing-dot:nth-child(2) { animation-delay: .2s; }
-    .typing-dot:nth-child(3) { animation-delay: .4s; }
-    @keyframes blink { 0%,80%,100% { opacity:.3 } 40% { opacity:1 } }
+    /* 长辈端：共享中（含标注） */
+    .parent-sharing { background: #1a1a2e; min-height: 420px; position: relative; overflow: hidden; }
+    .parent-sharing .status-bar { background: rgba(102,126,234,0.9); padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #fff; }
+    .parent-sharing .dot-green { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .shared-screen { background: linear-gradient(135deg, #1e3a5f, #0d2137); min-height: 370px; display: flex; align-items: center; justify-content: center; position: relative; }
+    .shared-screen .mock-ui { color: rgba(255,255,255,0.15); font-size: 13px; text-align: center; line-height: 2; }
+    .annotation-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    .annotation-label { position: absolute; background: #ff3b30; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 10px; top: 60px; left: 90px; font-weight: 600; }
 
-    .chat-input-row {
-      display: flex; gap: 10px; align-items: flex-end;
-      border-top: 1px solid var(--border); padding-top: 14px;
-    }
-    .chat-input {
-      flex: 1; background: var(--card); border: 1.5px solid var(--border);
-      color: var(--text); border-radius: 14px; padding: 11px 14px;
-      font-size: 14px; resize: none; outline: none; min-height: 44px; max-height: 120px;
-      font-family: inherit; line-height: 1.5;
-      transition: border-color .2s;
-    }
-    .chat-input:focus { border-color: var(--accent); }
-    .send-btn {
-      width: 44px; height: 44px; border-radius: 12px; border: none;
-      background: var(--accent); color: #fff; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; transition: all .15s;
-    }
-    .send-btn:active { transform: scale(.93); }
+    /* 子女端 */
+    .child-page { background: #0d0d1a; min-height: 500px; display: flex; flex-direction: column; }
+    .child-status { background: #1a1a2e; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #fff; flex-shrink: 0; }
+    .child-status .dot-g { width: 7px; height: 7px; background: #4caf50; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .child-video { flex: 1; background: linear-gradient(135deg, #1e3a5f, #0d2137); min-height: 380px; position: relative; display: flex; align-items: center; justify-content: center; }
+    .child-video .mock-screen { color: rgba(255,255,255,0.15); font-size: 12px; text-align: center; line-height: 2; }
+    .child-draw-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    .child-toolbar { background: #1a1a2e; padding: 10px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+    .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: default; }
+    .color-dot.selected { border: 3px solid #fff; }
+    .brush-btn { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; display: flex; align-items: center; justify-content: center; cursor: default; }
+    .brush-btn.selected { background: #667eea; }
+    .brush-dot { background: #fff; border-radius: 50%; }
+    .tool-divider { width: 1px; height: 24px; background: rgba(255,255,255,0.2); }
+    .clear-btn { background: rgba(255,255,255,0.15); border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: default; }
+    .mic-btn { margin-left: auto; background: #34c759; border: none; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: default; }
 
-    /* 风格标签选择 */
-    .style-chips {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
-    }
-    .style-chip {
-      padding: 7px 14px; border-radius: 20px; font-size: 13px;
-      border: 1.5px solid var(--border); background: transparent;
-      color: var(--muted); cursor: pointer; transition: all .2s;
-    }
-    .style-chip:hover, .style-chip.selected {
-      border-color: var(--accent); color: var(--accent);
-      background: rgba(167,139,250,0.12);
-    }
+    /* ── 功能介绍 ── */
+    .features { background: #fff; padding: 56px 24px; }
+    .features h2 { text-align: center; font-size: 26px; color: #1a1a2e; margin-bottom: 10px; }
+    .features .sub { text-align: center; color: #888; margin-bottom: 44px; font-size: 15px; }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; max-width: 900px; margin: 0 auto; }
+    .feature-card { background: #f8f9ff; border-radius: 16px; padding: 28px 24px; }
+    .feature-icon { font-size: 36px; margin-bottom: 14px; }
+    .feature-card h3 { font-size: 17px; color: #1a1a2e; margin-bottom: 8px; font-weight: 700; }
+    .feature-card p { font-size: 14px; color: #666; line-height: 1.6; }
 
-    /* ── 风格档案页 ── */
-    .profile-header {
-      background: linear-gradient(135deg, #1a0a2e, #0f0f1e);
-      border-radius: 20px; padding: 24px 20px;
-      border: 1px solid rgba(167,139,250,0.2);
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-    }
-    .profile-avatar {
-      width: 72px; height: 72px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 32px;
-    }
-    .profile-name { font-size: 18px; font-weight: 700; }
-    .profile-sub { font-size: 13px; color: var(--muted); }
-    .profile-stats {
-      display: flex; gap: 24px; margin-top: 8px;
-    }
-    .stat { text-align: center; }
-    .stat-num { font-size: 20px; font-weight: 700; color: var(--accent); }
-    .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    /* ── 流程说明 ── */
+    .flow { background: #f8f9ff; padding: 56px 24px; }
+    .flow h2 { text-align: center; font-size: 26px; color: #1a1a2e; margin-bottom: 44px; }
+    .flow-steps { display: flex; justify-content: center; gap: 0; max-width: 800px; margin: 0 auto; flex-wrap: wrap; }
+    .step { flex: 1; min-width: 160px; text-align: center; padding: 0 16px; position: relative; }
+    .step:not(:last-child)::after { content: '→'; position: absolute; right: -10px; top: 24px; color: #667eea; font-size: 20px; font-weight: 700; }
+    .step-num { width: 48px; height: 48px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; margin: 0 auto 12px; }
+    .step h4 { font-size: 14px; color: #1a1a2e; font-weight: 700; margin-bottom: 6px; }
+    .step p { font-size: 12px; color: #888; line-height: 1.5; }
 
-    .section-title {
-      font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .5px;
-      text-transform: uppercase; margin-bottom: 10px;
-    }
-    .radar-wrap {
-      background: var(--card); border-radius: 16px; padding: 16px;
-      border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center;
-    }
-    svg.radar text { fill: #888; font-size: 11px; }
-    .pref-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    }
-    .pref-item {
-      background: var(--card); border-radius: 12px; padding: 12px;
-      border: 1px solid var(--border);
-    }
-    .pref-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    .pref-val { font-size: 14px; font-weight: 600; color: var(--text); }
-
-    /* upload input hidden */
-    #fileInput { display: none; }
-
-    /* demo hint */
-    .demo-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: rgba(52,211,153,0.12); color: var(--green);
-      border: 1px solid rgba(52,211,153,0.3);
-      border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 600;
-    }
+    /* ── 底部 ── */
+    footer { background: #1a1a2e; color: rgba(255,255,255,0.5); text-align: center; padding: 24px; font-size: 13px; }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">📷 <span>出片助手</span></div>
-  <div class="tab-bar">
-    <button class="tab active" onclick="showPage('camera')">拍摄</button>
-    <button class="tab" onclick="showPage('chat')">风格</button>
-    <button class="tab" onclick="showPage('profile')">档案</button>
+<!-- 顶部导航 -->
+<nav class="nav">
+  <div class="nav-logo">📱 帮帮</div>
+  <div class="nav-tabs">
+    <button class="tab active" onclick="switchView('landing')">首页</button>
+    <button class="tab" onclick="switchView('parent-ready')">长辈端</button>
+    <button class="tab" onclick="switchView('parent-sharing')">指导中</button>
+    <button class="tab" onclick="switchView('child')">子女端</button>
   </div>
-</header>
+</nav>
 
-<!-- ══ 拍摄页 ══ -->
-<div class="page active" id="page-camera">
-  <!-- 相机/预览区 -->
-  <div class="camera-zone" id="cameraZone" onclick="handleCameraClick()">
-    <!-- 默认提示 -->
-    <div class="camera-hint" id="cameraHint">
-      <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-        <rect x="4" y="14" width="44" height="30" rx="6" stroke="currentColor" stroke-width="2"/>
-        <circle cx="26" cy="29" r="9" stroke="currentColor" stroke-width="2"/>
-        <circle cx="26" cy="29" r="4" fill="currentColor" opacity=".4"/>
-        <rect x="18" y="9" width="16" height="6" rx="3" stroke="currentColor" stroke-width="2"/>
-      </svg>
-      <p>点击开启摄像头</p>
-      <p style="font-size:12px;opacity:.5">或上传照片进行分析</p>
-    </div>
-    <!-- 视频流 -->
-    <video id="videoEl" autoplay playsinline muted style="display:none"></video>
-    <!-- 上传的图片预览 -->
-    <img id="uploadedImg" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
-    <!-- 构图辅助线 -->
-    <div class="camera-overlay" id="gridOverlay" style="display:none">
-      <div class="grid-line grid-h" id="grid-h1"></div>
-      <div class="grid-line grid-h" id="grid-h2"></div>
-      <div class="grid-line grid-v" id="grid-v1"></div>
-      <div class="grid-line grid-v" id="grid-v2"></div>
-    </div>
-    <!-- AI 气泡提示 -->
-    <div class="ai-bubble" id="bubble1">📐 主体偏左，可稍微右移 5-8cm，让天空占比更均衡</div>
-    <div class="ai-bubble" id="bubble2">✨ 黄金时段光线绝佳，推荐暖调后期</div>
+<!-- 英雄区 -->
+<div class="hero">
+  <h1>📱 帮帮</h1>
+  <p>让子女远程站在长辈旁边<br/>实时看到屏幕，语音指导，画线标注</p>
+  <div class="hero-badges">
+    <span class="badge">🖥️ 实时屏幕共享</span>
+    <span class="badge">✏️ 画线标注</span>
+    <span class="badge">🎙️ 语音通话</span>
+    <span class="badge">📲 一键求助</span>
   </div>
+</div>
 
-  <!-- 操作按钮 -->
-  <div class="cam-actions">
-    <button class="btn-circle" title="上传照片" onclick="document.getElementById('fileInput').click()">🖼️</button>
-    <button class="btn-circle primary" id="snapBtn" onclick="analyzePhoto()">🔍</button>
-    <button class="btn-circle" title="切换摄像头" onclick="switchCamera()">🔄</button>
+<!-- 设备预览 -->
+<div class="preview-section">
+  <h2>界面预览</h2>
+  <p class="subtitle">切换上方标签查看不同界面</p>
+  <div class="devices">
+
+    <!-- 手机（长辈端） -->
+    <div class="device">
+      <div class="device-label">👴 长辈端（手机）<span>接受协助</span></div>
+      <div class="phone-shell">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+
+          <!-- 长辈：首页 -->
+          <div class="screen-page active" id="phone-landing">
+            <div class="landing">
+              <div class="landing-card">
+                <div class="logo-big">📱</div>
+                <h2>帮帮</h2>
+                <p class="sub">让子女远程站在你旁边</p>
+                <div class="input-mock">1234</div>
+                <div class="role-row">
+                  <div class="role-btn selected"><span class="icon">👴</span>长辈端</div>
+                  <div class="role-btn"><span class="icon">💻</span>子女端</div>
+                </div>
+                <button class="join-btn">进入房间</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 长辈：等待共享 -->
+          <div class="screen-page" id="phone-parent-ready">
+            <div class="parent-ready">
+              <div class="status-bar">
+                <span><span class="dot"></span>子女已就位</span>
+                <span style="background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:10px;letter-spacing:2px">房间 1234</span>
+              </div>
+              <div class="content">
+                <div class="big-icon">👴</div>
+                <h3>子女已准备好帮你了</h3>
+                <p>点击下方按钮<br/>让子女看到你的屏幕</p>
+                <button class="share-btn">📲 开始共享屏幕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 长辈：共享中+标注 -->
+          <div class="screen-page" id="phone-parent-sharing">
+            <div class="parent-sharing">
+              <div class="status-bar">
+                <span><span class="dot-green"></span>🔴 屏幕共享中</span>
+                <span style="background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:10px;letter-spacing:2px">房间 1234</span>
+              </div>
+              <div class="shared-screen">
+                <div class="mock-screen" style="color:rgba(255,255,255,0.2);font-size:13px;text-align:center">
+                  微信<br/>✉️ 消息<br/>📞 通话<br/>👤 我
+                </div>
+                <svg class="annotation-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <polyline points="20,30 35,45 50,35 65,50" stroke="#ff3b30" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+                  <circle cx="65" cy="50" r="8" stroke="#ff3b30" stroke-width="2" fill="none" opacity="0.9"/>
+                </svg>
+                <div class="annotation-label">👆 点这里</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 电脑（子女端） -->
+    <div class="device">
+      <div class="device-label">💻 子女端（电脑/手机）<span>远程指导</span></div>
+      <div class="laptop-shell">
+        <div class="laptop-screen-wrap">
+          <div class="laptop-screen">
+
+            <!-- 子女：首页 -->
+            <div class="screen-page active" id="laptop-landing">
+              <div class="landing" style="min-height:340px">
+                <div class="landing-card" style="max-width:320px">
+                  <div class="logo-big">📱</div>
+                  <h2>帮帮</h2>
+                  <p class="sub">让子女远程站在你旁边</p>
+                  <div class="input-mock">1234</div>
+                  <div class="role-row">
+                    <div class="role-btn"><span class="icon">👴</span>长辈端</div>
+                    <div class="role-btn selected"><span class="icon">💻</span>子女端</div>
+                  </div>
+                  <button class="join-btn">进入房间</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 子女：指导界面 -->
+            <div class="screen-page" id="laptop-child">
+              <div class="child-page">
+                <div class="child-status">
+                  <span><span class="dot-g"></span>🔴 协助中</span>
+                  <span style="background:rgba(255,255,255,0.1);padding:3px 12px;border-radius:10px;letter-spacing:2px">房间 1234</span>
+                </div>
+                <div class="child-video">
+                  <div class="mock-screen">
+                    长辈屏幕实时画面<br/>
+                    ···<br/>
+                    微信 / 设置 / 相册
+                  </div>
+                  <svg class="child-draw-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <polyline points="18,28 32,42 48,32 62,48" stroke="#ff3b30" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+                    <circle cx="62" cy="48" r="6" stroke="#ff3b30" stroke-width="1.5" fill="none" opacity="0.9"/>
+                    <polyline points="30,65 45,60 60,68" stroke="#34c759" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+                  </svg>
+                </div>
+                <div class="child-toolbar">
+                  <div class="color-dot selected" style="background:#ff3b30"></div>
+                  <div class="color-dot" style="background:#ff9500"></div>
+                  <div class="color-dot" style="background:#34c759"></div>
+                  <div class="color-dot" style="background:#007aff"></div>
+                  <div class="color-dot" style="background:#af52de"></div>
+                  <div class="color-dot" style="background:#fff"></div>
+                  <div class="tool-divider"></div>
+                  <div class="brush-btn selected"><div class="brush-dot" style="width:4px;height:4px"></div></div>
+                  <div class="brush-btn"><div class="brush-dot" style="width:7px;height:7px"></div></div>
+                  <div class="brush-btn"><div class="brush-dot" style="width:11px;height:11px"></div></div>
+                  <div class="tool-divider"></div>
+                  <button class="clear-btn">清除标注</button>
+                  <button class="mic-btn">🎙️ 麦克风开</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="laptop-base"></div>
+        <div class="laptop-foot"></div>
+      </div>
+    </div>
+
   </div>
-  <input type="file" id="fileInput" accept="image/*" onchange="onFileSelect(this)">
+</div>
 
-  <!-- 分析结果（默认隐藏，分析后显示） -->
-  <div id="analysisResult" style="display:none; display:flex; flex-direction:column; gap:12px;">
-    <!-- 照片+总分 -->
-    <div class="result-card" style="display:flex; gap:14px; align-items:center;">
-      <img id="preview-thumb" src="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;border:2px solid var(--accent);flex-shrink:0;">
-      <div style="flex:1">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:4px">综合评分</div>
-        <div style="font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.1">82<span style="font-size:16px;opacity:.6">/100</span></div>
-        <div class="tag-row">
-          <span class="tag">日落风光</span>
-          <span class="tag">三分法构图</span>
-          <span class="tag">暖调</span>
-        </div>
-      </div>
+<!-- 功能介绍 -->
+<div class="features">
+  <h2>核心功能</h2>
+  <p class="sub">专为解决「子女不在身边，长辈手机不会用」的问题设计</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🖥️</div>
+      <h3>实时屏幕共享</h3>
+      <p>子女实时看到长辈的手机屏幕，清晰无延迟，无需长辈对着摄像头举手机。</p>
     </div>
-
-    <!-- 各维度评分 -->
-    <div class="result-card">
-      <h3>📊 维度评分</h3>
-      <div class="score-row">
-        <span class="score-label">构图</span>
-        <div class="score-bar-wrap"><div class="score-bar" style="width:75%"></div></div>
-        <span class="score-num">75</span>
-      </div>
-      <div class="score-row">
-        <span class="score-label">光线</span>
-        <div class="score-bar-wrap"><div class="score-bar" style="width:90%"></div></div>
-        <span class="score-num">90</span>
-      </div>
-      <div class="score-row">
-        <span class="score-label">色彩</span>
-        <div class="score-bar-wrap"><div class="score-bar" style="width:80%"></div></div>
-        <span class="score-num">80</span>
-      </div>
-      <div class="score-row">
-        <span class="score-label">清晰度</span>
-        <div class="score-bar-wrap"><div class="score-bar" style="width:85%"></div></div>
-        <span class="score-num">85</span>
-      </div>
+    <div class="feature-card">
+      <div class="feature-icon">✏️</div>
+      <h3>屏幕画线标注</h3>
+      <p>子女直接在长辈屏幕上圈出要点击的位置，颜色、粗细可调，4秒自动消失。</p>
     </div>
-
-    <!-- 调整建议 -->
-    <div class="result-card">
-      <h3>🎯 构图调整建议</h3>
-      <div class="tip-list">
-        <div class="tip-item">
-          <div class="tip-icon">📱</div>
-          <div class="tip-text"><strong>机位向右移约 10cm</strong>，使树干从左三分线穿过，视觉更稳</div>
-        </div>
-        <div class="tip-item">
-          <div class="tip-icon">⬇️</div>
-          <div class="tip-text"><strong>降低拍摄高度 20cm</strong>，纳入更多前景湖面，增强空间纵深感</div>
-        </div>
-        <div class="tip-item">
-          <div class="tip-icon">🔄</div>
-          <div class="tip-text">尝试<strong>竖构图</strong>，天空与水面各占一半，打造对称倒影效果</div>
-        </div>
-      </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎙️</div>
+      <h3>实时语音通话</h3>
+      <p>像打电话一样同步语音指导，声音+视觉双通道，长辈按照声音和标注操作即可。</p>
     </div>
-
-    <!-- 后期方向 -->
-    <div class="result-card">
-      <h3>🎨 后期修图方向</h3>
-      <div class="tip-list">
-        <div class="tip-item">
-          <div class="tip-icon">🌅</div>
-          <div class="tip-text">色温提高至 6200K，<strong>高光降 -25、阴影提 +15</strong>，还原黄昏层次感</div>
-        </div>
-        <div class="tip-item">
-          <div class="tip-icon">🎞️</div>
-          <div class="tip-text">参考胶片风格：<strong>降低黑色点</strong>，给整体添加轻微冷阴影以对比橙色高光</div>
-        </div>
-        <div class="tip-item">
-          <div class="tip-icon">✨</div>
-          <div class="tip-text">局部提亮远处山脊，<strong>引导视线</strong>向画面纵深延伸</div>
-        </div>
-      </div>
+    <div class="feature-card">
+      <div class="feature-icon">📲</div>
+      <h3>一键求助录屏</h3>
+      <p>长辈遇到问题点一个按钮自动录屏发给子女，解决找不到系统录屏功能的问题。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔔</div>
+      <h3>设备健康提醒</h3>
+      <p>存储快满、异常App等问题提前推送给子女，问题爆发前介入解决。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <h3>防诈骗提醒</h3>
+      <p>检测到可疑链接或陌生转账请求，主动提醒子女，降低长辈受骗风险。</p>
     </div>
   </div>
 </div>
 
-<!-- ══ 风格对话页 ══ -->
-<div class="page" id="page-chat" style="height:calc(100vh - 60px)">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-    <h2 style="font-size:16px;font-weight:700">风格偏好探索</h2>
-    <span class="demo-badge">✦ AI 学习中</span>
-  </div>
-
-  <div class="chat-container" id="chatContainer">
-    <div class="msg ai">
-      嗨！我是你的出片助手 📷<br><br>
-      我会通过聊天了解你的摄影风格和审美偏好，之后在帮你构图时，会优先推荐符合你风格的建议。<br><br>
-      先问你一个问题：<strong>你平时更喜欢哪种风格的照片？</strong>
-      <div class="style-chips" id="style-chips-1">
-        <button class="style-chip" onclick="selectChip(this,'胶片复古')">🎞️ 胶片复古</button>
-        <button class="style-chip" onclick="selectChip(this,'日系清淡')">🌸 日系清淡</button>
-        <button class="style-chip" onclick="selectChip(this,'赛博暗调')">🌃 赛博暗调</button>
-        <button class="style-chip" onclick="selectChip(this,'自然纪实')">🌿 自然纪实</button>
-        <button class="style-chip" onclick="selectChip(this,'高对比黑白')">◐ 高对比黑白</button>
-      </div>
+<!-- 使用流程 -->
+<div class="flow">
+  <h2>三步开始协助</h2>
+  <div class="flow-steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>进入同一房间</h4>
+      <p>子女和长辈填写相同的4位房间号</p>
     </div>
-  </div>
-
-  <div class="chat-input-row">
-    <textarea class="chat-input" id="chatInput" placeholder="输入你的想法…" rows="1"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
-      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-    <button class="send-btn" onclick="sendMsg()">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M3 10L17 3L10 17L9 11L3 10Z" fill="white"/>
-      </svg>
-    </button>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>长辈一键共享</h4>
+      <p>长辈点「开始共享屏幕」，子女立即看到画面</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>语音+标注指导</h4>
+      <p>子女语音说明，同时在屏幕上画圈标注位置</p>
+    </div>
   </div>
 </div>
 
-<!-- ══ 风格档案页 ══ -->
-<div class="page" id="page-profile">
-  <div class="profile-header">
-    <div class="profile-avatar">🌟</div>
-    <div class="profile-name">我的风格档案</div>
-    <div class="profile-sub">基于 12 次分析 · 3 次对话建立</div>
-    <div class="profile-stats">
-      <div class="stat"><div class="stat-num">12</div><div class="stat-label">分析次数</div></div>
-      <div class="stat"><div class="stat-num">87</div><div class="stat-label">平均分</div></div>
-      <div class="stat"><div class="stat-num">3</div><div class="stat-label">偏好标签</div></div>
-    </div>
-  </div>
-
-  <!-- 雷达图 -->
-  <div class="radar-wrap">
-    <div class="section-title" style="align-self:flex-start">风格偏好雷达</div>
-    <svg width="240" height="200" viewBox="0 0 240 200" class="radar">
-      <!-- 背景网格 -->
-      <polygon points="120,20 212,70 212,150 120,180 28,150 28,70" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
-      <polygon points="120,45 189,82 189,130 120,155 51,130 51,82" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-      <polygon points="120,70 166,94 166,110 120,130 74,110 74,94" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-      <!-- 数据填充 -->
-      <polygon points="120,30 200,78 195,138 120,165 50,140 45,82"
-        fill="rgba(167,139,250,0.18)" stroke="#a78bfa" stroke-width="1.5"/>
-      <!-- 标签 -->
-      <text x="120" y="14" text-anchor="middle">构图感</text>
-      <text x="222" y="72">光影</text>
-      <text x="218" y="154">色彩</text>
-      <text x="120" y="196" text-anchor="middle">纪实感</text>
-      <text x="6" y="154">氛围</text>
-      <text x="10" y="72">故事性</text>
-      <!-- 数据点 -->
-      <circle cx="120" cy="30" r="3" fill="#a78bfa"/>
-      <circle cx="200" cy="78" r="3" fill="#a78bfa"/>
-      <circle cx="195" cy="138" r="3" fill="#a78bfa"/>
-      <circle cx="120" cy="165" r="3" fill="#a78bfa"/>
-      <circle cx="50" cy="140" r="3" fill="#a78bfa"/>
-      <circle cx="45" cy="82" r="3" fill="#a78bfa"/>
-    </svg>
-  </div>
-
-  <!-- 偏好标签 -->
-  <div class="result-card">
-    <div class="section-title">已识别偏好</div>
-    <div class="tag-row">
-      <span class="tag">胶片复古</span>
-      <span class="tag">暖色调</span>
-      <span class="tag">三分法构图</span>
-      <span class="tag">低饱和</span>
-      <span class="tag">自然光</span>
-      <span class="tag">人文纪实</span>
-    </div>
-  </div>
-
-  <!-- 偏好细节 -->
-  <div class="pref-grid">
-    <div class="pref-item">
-      <div class="pref-label">最爱场景</div>
-      <div class="pref-val">🌅 黄昏风光</div>
-    </div>
-    <div class="pref-item">
-      <div class="pref-label">偏好构图</div>
-      <div class="pref-val">📐 三分法</div>
-    </div>
-    <div class="pref-item">
-      <div class="pref-label">色调倾向</div>
-      <div class="pref-val">🟠 暖橙色</div>
-    </div>
-    <div class="pref-item">
-      <div class="pref-label">后期风格</div>
-      <div class="pref-val">🎞️ 胶片感</div>
-    </div>
-  </div>
-
-  <div style="height:20px"></div>
-</div>
+<footer>帮帮 · 让科技帮助家人更近</footer>
 
 <script>
-// ──── 页面切换 ────
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  event.target.classList.add('active');
-}
+  function switchView(view) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
 
-// ──── 摄像头 ────
-let stream = null;
-let facingMode = 'environment';
+    const phoneMap = {
+      'landing': 'phone-landing',
+      'parent-ready': 'phone-parent-ready',
+      'parent-sharing': 'phone-parent-sharing',
+      'child': 'phone-landing'
+    };
+    const laptopMap = {
+      'landing': 'laptop-landing',
+      'parent-ready': 'laptop-landing',
+      'parent-sharing': 'laptop-landing',
+      'child': 'laptop-child'
+    };
 
-async function handleCameraClick() {
-  if (stream) return; // 已开启，不重复
-  const hint = document.getElementById('cameraHint');
-  hint.innerHTML = '<div class="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
-    const video = document.getElementById('videoEl');
-    video.srcObject = stream;
-    video.style.display = 'block';
-    hint.style.display = 'none';
-    document.getElementById('gridOverlay').style.display = 'block';
-    // 延迟显示AI气泡（模拟实时分析）
-    setTimeout(() => document.getElementById('bubble1').classList.add('show'), 2000);
-    setTimeout(() => document.getElementById('bubble2').classList.add('show'), 3500);
-  } catch(e) {
-    hint.innerHTML = '<p style="color:#f87171">摄像头未授权<br><small>请允许访问相机权限</small></p>';
+    document.querySelectorAll('.phone-screen .screen-page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.laptop-screen .screen-page').forEach(p => p.classList.remove('active'));
+
+    document.getElementById(phoneMap[view])?.classList.add('active');
+    document.getElementById(laptopMap[view])?.classList.add('active');
   }
-}
-
-function switchCamera() {
-  if (!stream) return;
-  facingMode = facingMode === 'environment' ? 'user' : 'environment';
-  stream.getTracks().forEach(t => t.stop());
-  stream = null;
-  document.getElementById('videoEl').style.display = 'none';
-  document.getElementById('cameraHint').style.display = 'flex';
-  document.getElementById('cameraHint').innerHTML = `
-    <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-      <rect x="4" y="14" width="44" height="30" rx="6" stroke="currentColor" stroke-width="2"/>
-      <circle cx="26" cy="29" r="9" stroke="currentColor" stroke-width="2"/>
-      <circle cx="26" cy="29" r="4" fill="currentColor" opacity=".4"/>
-      <rect x="18" y="9" width="16" height="6" rx="3" stroke="currentColor" stroke-width="2"/>
-    </svg>
-    <p>点击开启摄像头</p>`;
-  document.getElementById('gridOverlay').style.display = 'none';
-  [document.getElementById('bubble1'), document.getElementById('bubble2')].forEach(b => b.classList.remove('show'));
-  handleCameraClick();
-}
-
-// ──── 文件上传 ────
-function onFileSelect(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    // 停止摄像头
-    if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
-    const img = document.getElementById('uploadedImg');
-    const video = document.getElementById('videoEl');
-    img.src = e.target.result;
-    img.style.display = 'block';
-    video.style.display = 'none';
-    document.getElementById('cameraHint').style.display = 'none';
-    document.getElementById('gridOverlay').style.display = 'block';
-    // 设置预览缩略图
-    document.getElementById('preview-thumb').src = e.target.result;
-    document.getElementById('preview-thumb').style.display = 'block';
-    // 自动开始分析
-    setTimeout(analyzePhoto, 400);
-  };
-  reader.readAsDataURL(file);
-}
-
-// ──── 分析 ────
-let analyzing = false;
-function analyzePhoto() {
-  if (analyzing) return;
-  analyzing = true;
-  const btn = document.getElementById('snapBtn');
-  btn.textContent = '⏳';
-  btn.disabled = true;
-
-  // 模拟 AI 分析延迟（真实版本会调用 Claude API）
-  setTimeout(() => {
-    document.getElementById('analysisResult').style.display = 'flex';
-    document.getElementById('bubble1').classList.add('show');
-    document.getElementById('bubble2').classList.add('show');
-    // 滚动到结果
-    document.getElementById('analysisResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    btn.textContent = '✅';
-    setTimeout(() => { btn.textContent = '🔍'; btn.disabled = false; analyzing = false; }, 2000);
-  }, 1800);
-}
-
-// ──── 聊天 ────
-const chatScripts = {
-  '胶片复古': [
-    '很棒的选择！胶片风格有种独特的温度感 🎞️\n\n我记住了：你偏爱<strong>胶片复古</strong>风格。\n\n那色调上，你更喜欢哪个方向？',
-    ['偏暖橙的夕阳感', '偏冷绿的森系感', '高对比黑白']
-  ],
-  '日系清淡': [
-    '日系清淡很有治愈感 🌸\n\n这种风格通常高亮、低饱和，留白多。你在构图上是偏爱<strong>极简留白</strong>，还是<strong>自然生活感</strong>？',
-    ['极简留白', '自然生活感', '人物为主']
-  ],
-  '赛博暗调': [
-    '赛博暗调！很有个性的选择 🌃\n\n这种风格在夜景和城市光影里特别出彩。你最常拍什么题材？',
-    ['夜间城市街景', '人像', '抽象建筑']
-  ],
-  '自然纪实': [
-    '自然纪实注重真实瞬间，是很有故事性的风格 🌿\n\n你更倾向于哪种纪实方向？',
-    ['人文街拍', '自然风光', '日常生活']
-  ],
-  '高对比黑白': [
-    '黑白摄影能让光影关系更纯粹，很有力量感 ◐\n\n你偏爱哪种黑白调？',
-    ['高对比强烈感', '细腻柔和感', '胶片颗粒感']
-  ],
-};
-
-const followUpAnswers = {
-  '偏暖橙的夕阳感': '完美 🌅 暖调胶片风格已记录到你的档案！\n\n今后我会优先推荐<strong>暖橙色调 + 三分法构图</strong>的拍摄方案，适合黄昏、街道光晕、港口等场景。\n\n继续聊聊——你平时拍风景多，还是人像多？',
-  '偏冷绿的森系感': '冷绿胶片真的太好看了 🌲 档案已更新！\n\n建议重点关注<strong>绿调阴影 + 高光收回</strong>的后期方向。今后推荐构图时会给你匹配树林、阴天这类场景。',
-  '高对比黑白': '极简有力！档案已更新 ◐\n\n高对比黑白最适合强烈阴影光线，我会在你拍光影明显的场景时，优先给出黑白构图建议。',
-};
-
-let waitingForChip2 = false;
-function selectChip(el, label) {
-  el.classList.add('selected');
-  el.parentElement.querySelectorAll('.style-chip').forEach(c => c !== el && (c.disabled = true));
-  appendUserMsg(label);
-  const reply = chatScripts[label];
-  if (reply) {
-    showTyping(() => {
-      if (reply[1]) {
-        appendAIMsg(reply[0], reply[1]);
-        waitingForChip2 = true;
-      } else {
-        appendAIMsg(reply[0]);
-      }
-    });
-  }
-}
-
-function selectChip2(el, label) {
-  el.classList.add('selected');
-  el.parentElement.querySelectorAll('.style-chip').forEach(c => c !== el && (c.disabled = true));
-  appendUserMsg(label);
-  const reply = followUpAnswers[label] || '已记录！我会在后续分析中给出个性化建议 ✨';
-  showTyping(() => appendAIMsg(reply));
-}
-
-function appendUserMsg(text) {
-  const container = document.getElementById('chatContainer');
-  const div = document.createElement('div');
-  div.className = 'msg user';
-  div.textContent = text;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-}
-
-function appendAIMsg(html, chips) {
-  const container = document.getElementById('chatContainer');
-  const div = document.createElement('div');
-  div.className = 'msg ai';
-  div.innerHTML = html;
-  if (chips) {
-    const chipRow = document.createElement('div');
-    chipRow.className = 'style-chips';
-    chips.forEach(c => {
-      const btn = document.createElement('button');
-      btn.className = 'style-chip';
-      btn.textContent = c;
-      btn.onclick = () => selectChip2(btn, c);
-      chipRow.appendChild(btn);
-    });
-    div.appendChild(chipRow);
-  }
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-}
-
-function showTyping(cb) {
-  const container = document.getElementById('chatContainer');
-  const div = document.createElement('div');
-  div.className = 'msg ai';
-  div.innerHTML = '<div class="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  setTimeout(() => { div.remove(); cb(); }, 1200 + Math.random()*600);
-}
-
-// 通用消息发送
-const aiReplies = [
-  '明白了！这个偏好已加入你的风格档案 ✨ 之后在分析照片时会优先匹配这个方向。',
-  '很有意思的审美！这类风格在构图上通常注重<strong>引导线和前景</strong>，我会重点关注这些要素。',
-  '已记录 📝 你的风格越来越清晰了，继续分享你喜欢的场景或照片类型吧！',
-  '好的！我在想：你通常用手机拍，还是相机拍？这会影响我给你的构图距离建议哦。',
-];
-let replyIdx = 0;
-function sendMsg() {
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text) return;
-  appendUserMsg(text);
-  input.value = '';
-  input.style.height = 'auto';
-  showTyping(() => {
-    appendAIMsg(aiReplies[replyIdx % aiReplies.length]);
-    replyIdx++;
-  });
-}
 </script>
 </body>
 </html>
